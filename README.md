@@ -18,7 +18,9 @@ nfl-monte-carlo/
 │   ├── nfl_simulation.qmd       # Full simulation report (Quarto HTML)
 │   └── nfl_praesentation.qmd   # Presentation slides (Quarto revealjs)
 └── output/
-    └── ...                      # Rendered HTML, slides, and charts
+    ├── plot-superbowl-1.png     # Super Bowl win probabilities (all 32 teams)
+    ├── plot-playoff-1.png       # Playoff qualification probabilities
+    └── plot-wins-1.png          # Simulated wins vs. Vegas projections
 ```
 
 ## Key parameters
@@ -39,4 +41,3 @@ Requires [R](https://www.r-project.org/) and [Quarto](https://quarto.org/).
 quarto render code/nfl_simulation.qmd
 quarto render code/nfl_praesentation.qmd
 ```
-
