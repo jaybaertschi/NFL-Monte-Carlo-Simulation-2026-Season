@@ -40,6 +40,3 @@ quarto render code/nfl_simulation.qmd
 quarto render code/nfl_praesentation.qmd
 ```
 
-## Authors
-
-Silvan Herzig & Jay Bärtschi — FS 2026
