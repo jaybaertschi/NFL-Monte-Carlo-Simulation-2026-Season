@@ -23,6 +23,12 @@ nfl-monte-carlo/
     └── plot-wins-1.png          # Simulated wins vs. Vegas projections
 ```
 
+## Data
+
+Team strength is derived from **Vegas win totals 2026** — bookmaker-estimated expected wins per team over a 17-game season. These are widely considered the best available predictor of team quality and were updated after the official schedule release on May 14, 2026 (source: Yahoo Sports / Vegas Sportsbooks).
+
+Defensive ratings are sourced from **2025 NFL season stats** (points allowed per game, source: StatMuse / Fox Sports).
+
 ## Key parameters
 
 | Parameter | Value | Description |
