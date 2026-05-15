@@ -1,0 +1,500 @@
+---
+title: "NFL Super Bowl Prognose"
+subtitle: "Stochastische Simulation der Saison 2026/27"
+author: "Silvan Herzig & Jay Bärtschi"
+date: "2026-05-15"
+format:
+  revealjs:
+    theme: default
+    slide-number: true
+    transition: slide
+    embed-resources: true
+    fig-align: center
+    include-in-header:
+      text: |
+        <style>
+        @font-face {
+          font-family: 'Aptos Light';
+          src: local('Aptos Light'), local('Aptos-Light');
+        }
+        .reveal, .reveal h1, .reveal h2, .reveal h3,
+        .reveal p, .reveal li, .reveal table {
+          font-family: 'Aptos Light', 'Aptos', 'Segoe UI Light', 'Helvetica Neue', sans-serif !important;
+        }
+        .reveal h2 {
+          font-size: 1.35em;
+          color: #013369;
+          border-bottom: 3px solid #D50A0A;
+          padding-bottom: 0.15em;
+          margin-bottom: 0.4em;
+        }
+        .reveal h3 { font-size: 1.05em; color: #D50A0A; margin: 0.3em 0; }
+        .reveal .slides section { padding-bottom: 0.5em; }
+        .hbox {
+          background: #eef2f8;
+          border-left: 5px solid #013369;
+          padding: 0.6em 1em;
+          margin: 0.4em 0;
+          border-radius: 4px;
+          font-size: 0.95em;
+        }
+        .fbox {
+          background: #013369;
+          color: white;
+          padding: 0.45em 0.9em;
+          border-radius: 5px;
+          font-size: 0.88em;
+          text-align: center;
+          margin: 0.3em 0;
+        }
+        .two-col {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.2em;
+          font-size: 0.88em;
+        }
+        .reveal table th, .reveal table td { font-size: 0.82em; padding: 0.25em 0.5em; }
+        </style>
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+library(tidyverse)
+library(ggplot2)
+library(scales)
+
+set.seed(1886)
+N_SIM       <- 10000
+BASE_POINTS <- 23.0
+HOME_BONUS  <- 2.0
+FORM_SD     <- 8.5
+DEF_WEIGHT  <- 0.1
+```
+
+```{r teams}
+#| include: false
+teams <- tribble(
+  ~team,                    ~abbr,  ~conference, ~division,       ~win_total, ~pts_for, ~pts_against,
+  "Buffalo Bills",          "BUF",  "AFC",       "AFC East",      10.5,       28.3,     21.5,
+  "New England Patriots",   "NE",   "AFC",       "AFC East",       9.5,       28.8,     18.8,
+  "New York Jets",          "NYJ",  "AFC",       "AFC East",       5.5,       17.6,     29.6,
+  "Miami Dolphins",         "MIA",  "AFC",       "AFC East",       4.5,       20.4,     24.9,
+  "Baltimore Ravens",       "BAL",  "AFC",       "AFC North",     11.5,       24.5,     23.4,
+  "Cincinnati Bengals",     "CIN",  "AFC",       "AFC North",      9.5,       19.5,     28.9,
+  "Pittsburgh Steelers",    "PIT",  "AFC",       "AFC North",      8.5,       23.4,     22.8,
+  "Cleveland Browns",       "CLE",  "AFC",       "AFC North",      6.5,       16.4,     22.3,
+  "Houston Texans",         "HOU",  "AFC",       "AFC South",      9.5,       26.0,     17.4,
+  "Indianapolis Colts",     "IND",  "AFC",       "AFC South",      7.5,       27.4,     24.2,
+  "Jacksonville Jaguars",   "JAX",  "AFC",       "AFC South",      9.5,       27.9,     19.8,
+  "Tennessee Titans",       "TEN",  "AFC",       "AFC South",      6.5,       16.7,     28.1,
+  "Los Angeles Chargers",   "LAC",  "AFC",       "AFC West",      10.5,       21.6,     20.0,
+  "Kansas City Chiefs",     "KC",   "AFC",       "AFC West",      10.5,       21.3,     19.3,
+  "Denver Broncos",         "DEN",  "AFC",       "AFC West",       9.5,       23.6,     18.3,
+  "Las Vegas Raiders",      "LV",   "AFC",       "AFC West",       5.5,       14.2,     25.4,
+  "Philadelphia Eagles",    "PHI",  "NFC",       "NFC East",      10.5,       22.3,     19.1,
+  "Washington Commanders",  "WAS",  "NFC",       "NFC East",       7.5,       20.9,     26.5,
+  "Dallas Cowboys",         "DAL",  "NFC",       "NFC East",       9.5,       27.7,     30.1,
+  "New York Giants",        "NYG",  "NFC",       "NFC East",       7.5,       22.4,     25.8,
+  "Detroit Lions",          "DET",  "NFC",       "NFC North",     10.5,       28.3,     24.3,
+  "Green Bay Packers",      "GB",   "NFC",       "NFC North",     10.5,       23.0,     21.2,
+  "Chicago Bears",          "CHI",  "NFC",       "NFC North",      9.5,       25.9,     24.4,
+  "Minnesota Vikings",      "MIN",  "NFC",       "NFC North",      8.5,       20.2,     19.6,
+  "Tampa Bay Buccaneers",   "TB",   "NFC",       "NFC South",      8.5,       22.5,     24.2,
+  "Atlanta Falcons",        "ATL",  "NFC",       "NFC South",      7.5,       20.8,     23.6,
+  "New Orleans Saints",     "NO",   "NFC",       "NFC South",      7.5,       18.0,     22.5,
+  "Carolina Panthers",      "CAR",  "NFC",       "NFC South",      7.5,       17.7,     22.4,
+  "Los Angeles Rams",       "LAR",  "NFC",       "NFC West",      11.5,       30.5,     20.4,
+  "San Francisco 49ers",    "SF",   "NFC",       "NFC West",      10.5,       25.7,     21.8,
+  "Seattle Seahawks",       "SEA",  "NFC",       "NFC West",      10.5,       28.4,     17.2,
+  "Arizona Cardinals",      "ARI",  "NFC",       "NFC West",       4.5,       20.9,     28.7
+)
+
+teams <- teams %>%
+  mutate(
+    p_vs_avg    = win_total / 17,
+    elo         = 1500 - 400 * log10(1 / p_vs_avg - 1),
+    lambda_base = BASE_POINTS * (elo / 1500),
+    off_rating  = pts_for / mean(pts_for),
+    def_rating  = 1 + (pts_against / mean(pts_against) - 1) * DEF_WEIGHT
+  )
+```
+
+```{r schedule}
+#| include: false
+official_home_games <- list(
+  NE  = c("BUF","MIA","NYJ","DEN","GB","LV","MIN","PIT"),
+  BUF = c("MIA","NE","NYJ","BAL","CHI","DET","KC","LAC"),
+  MIA = c("BUF","NE","NYJ","CHI","CIN","DET","KC","LAC"),
+  NYJ = c("BUF","MIA","NE","CLE","DEN","GB","LV","MIN"),
+  BAL = c("CIN","CLE","PIT","JAX","LAC","NO","TB","TEN"),
+  CIN = c("BAL","CLE","PIT","JAX","KC","NO","TB","TEN"),
+  CLE = c("BAL","CIN","PIT","ATL","CAR","HOU","IND","LV"),
+  PIT = c("BAL","CIN","CLE","ATL","CAR","DEN","HOU","IND"),
+  HOU = c("IND","JAX","TEN","BAL","BUF","CIN","DAL","NYG"),
+  IND = c("HOU","JAX","TEN","BAL","CIN","DAL","MIA","NYG"),
+  JAX = c("HOU","IND","TEN","CLE","NE","PHI","PIT","WAS"),
+  TEN = c("HOU","IND","JAX","CLE","NYJ","PHI","PIT","WAS"),
+  DEN = c("KC","LV","LAC","BUF","JAX","LAR","MIA","SEA"),
+  KC  = c("DEN","LV","LAC","ARI","IND","NE","NYJ","SF"),
+  LAC = c("DEN","KC","LV","ARI","HOU","NE","NYJ","SF"),
+  LV  = c("DEN","KC","LAC","BUF","LAR","MIA","SEA","TEN"),
+  PHI = c("DAL","NYG","WAS","CAR","HOU","IND","LAR","PIT","SEA"),
+  DAL = c("NYG","PHI","WAS","ARI","BAL","JAX","SF","TB","TEN"),
+  WAS = c("DAL","NYG","PHI","ATL","CIN","HOU","IND","LAR","SEA"),
+  NYG = c("DAL","PHI","WAS","ARI","CLE","JAX","NO","SF","TEN"),
+  CHI = c("DET","GB","MIN","JAX","NE","NO","NYJ","PHI","TB"),
+  GB  = c("CHI","DET","MIN","ATL","BUF","CAR","DAL","HOU","MIA"),
+  MIN = c("CHI","DET","GB","ATL","BUF","CAR","IND","MIA","WAS"),
+  DET = c("CHI","GB","MIN","NE","NO","NYG","NYJ","TB","TEN"),
+  ATL = c("CAR","NO","TB","BAL","CHI","CIN","DET","KC","SF"),
+  CAR = c("ATL","NO","TB","BAL","CHI","CIN","DEN","DET","SEA"),
+  NO  = c("ATL","CAR","TB","ARI","CLE","GB","LV","MIN","PIT"),
+  TB  = c("ATL","CAR","NO","CLE","GB","LAC","LAR","MIN","PIT"),
+  SEA = c("ARI","LAR","SF","CHI","DAL","KC","LAC","NE","NYG"),
+  LAR = c("ARI","SF","SEA","BUF","DAL","GB","KC","LAC","NYG"),
+  SF  = c("ARI","LAR","SEA","DEN","LV","MIA","MIN","PHI","WAS"),
+  ARI = c("LAR","SF","SEA","DEN","DET","LV","NYJ","PHI","WAS")
+)
+
+schedule <- bind_rows(lapply(names(official_home_games), function(h) {
+  data.frame(home = h, away = official_home_games[[h]], stringsAsFactors = FALSE)
+}))
+```
+
+```{r functions}
+#| include: false
+simulate_game <- function(team_home, team_away, teams_df) {
+  lam_home <- teams_df$lambda_base[teams_df$abbr == team_home]
+  lam_away <- teams_df$lambda_base[teams_df$abbr == team_away]
+  def_home <- teams_df$def_rating[teams_df$abbr == team_home]
+  def_away  <- teams_df$def_rating[teams_df$abbr == team_away]
+  form_home <- max(0.3, 1 + rnorm(1, mean = 0, sd = FORM_SD / BASE_POINTS))
+  form_away <- max(0.3, 1 + rnorm(1, mean = 0, sd = FORM_SD / BASE_POINTS))
+  eff_lam_home <- max(1, (lam_home * def_away  + HOME_BONUS) * form_home)
+  eff_lam_away <- max(1,  lam_away * def_home                * form_away)
+  pts_home <- rpois(1, lambda = eff_lam_home)
+  pts_away <- rpois(1, lambda = eff_lam_away)
+  while (pts_home == pts_away) {
+    pts_home <- pts_home + rpois(1, 3)
+    pts_away <- pts_away + rpois(1, 3)
+  }
+  list(winner = ifelse(pts_home > pts_away, team_home, team_away),
+       loser  = ifelse(pts_home > pts_away, team_away, team_home),
+       pts_home = pts_home, pts_away = pts_away)
+}
+
+simulate_season <- function(teams_df, schedule_df) {
+  wins   <- setNames(rep(0L, nrow(teams_df)), teams_df$abbr)
+  losses <- setNames(rep(0L, nrow(teams_df)), teams_df$abbr)
+  for (i in seq_len(nrow(schedule_df))) {
+    result <- simulate_game(schedule_df$home[i], schedule_df$away[i], teams_df)
+    wins[result$winner]  <- wins[result$winner]  + 1L
+    losses[result$loser] <- losses[result$loser] + 1L
+  }
+  list(wins = wins, losses = losses)
+}
+
+get_playoff_seeds <- function(season_result, teams_df) {
+  win_vec <- season_result$wins
+  results <- teams_df %>% mutate(wins = win_vec[abbr])
+  seeds <- list()
+  for (conf in c("AFC", "NFC")) {
+    conf_teams <- results %>% filter(conference == conf)
+    div_winners <- conf_teams %>%
+      group_by(division) %>%
+      slice_max(wins, n = 1, with_ties = FALSE) %>%
+      ungroup() %>%
+      arrange(desc(wins)) %>%
+      mutate(seed = row_number())
+    wildcards <- conf_teams %>%
+      filter(!abbr %in% div_winners$abbr) %>%
+      arrange(desc(wins)) %>%
+      head(3) %>%
+      mutate(seed = nrow(div_winners) + row_number())
+    seeds[[conf]] <- bind_rows(div_winners, wildcards)
+  }
+  seeds
+}
+
+simulate_playoff_game <- function(team_a, team_b, teams_df) {
+  simulate_game(team_a, team_b, teams_df)$winner
+}
+
+simulate_playoffs <- function(seeds, teams_df) {
+  simulate_conference <- function(conf_seeds) {
+    wc_winners <- c(
+      simulate_playoff_game(conf_seeds$abbr[2], conf_seeds$abbr[7], teams_df),
+      simulate_playoff_game(conf_seeds$abbr[3], conf_seeds$abbr[6], teams_df),
+      simulate_playoff_game(conf_seeds$abbr[4], conf_seeds$abbr[5], teams_df)
+    )
+    div_field   <- c(conf_seeds$abbr[1], wc_winners)
+    div_winner1 <- simulate_playoff_game(div_field[1], div_field[4], teams_df)
+    div_winner2 <- simulate_playoff_game(div_field[2], div_field[3], teams_df)
+    simulate_playoff_game(div_winner1, div_winner2, teams_df)
+  }
+  afc_champ <- simulate_conference(seeds[["AFC"]])
+  nfc_champ <- simulate_conference(seeds[["NFC"]])
+  sb_winner <- simulate_playoff_game(afc_champ, nfc_champ, teams_df)
+  list(afc_champion = afc_champ, nfc_champion = nfc_champ,
+       super_bowl   = sb_winner,
+       afc_playoff  = seeds[["AFC"]]$abbr,
+       nfc_playoff  = seeds[["NFC"]]$abbr)
+}
+```
+
+```{r simulation}
+#| include: false
+sb_wins      <- setNames(rep(0L,  nrow(teams)), teams$abbr)
+playoff_apps <- setNames(rep(0L,  nrow(teams)), teams$abbr)
+conf_champ   <- setNames(rep(0L,  nrow(teams)), teams$abbr)
+avg_wins_sum <- setNames(rep(0.0, nrow(teams)), teams$abbr)
+
+for (i in seq_len(N_SIM)) {
+  season   <- simulate_season(teams, schedule)
+  seeds    <- get_playoff_seeds(season, teams)
+  playoffs <- simulate_playoffs(seeds, teams)
+  sb_wins[playoffs$super_bowl] <- sb_wins[playoffs$super_bowl] + 1L
+  conf_champ[playoffs$afc_champion] <- conf_champ[playoffs$afc_champion] + 1L
+  conf_champ[playoffs$nfc_champion] <- conf_champ[playoffs$nfc_champion] + 1L
+  all_playoff_teams <- c(playoffs$afc_playoff, playoffs$nfc_playoff)
+  playoff_apps[all_playoff_teams] <- playoff_apps[all_playoff_teams] + 1L
+  for (t in teams$abbr) avg_wins_sum[t] <- avg_wins_sum[t] + season$wins[t]
+}
+
+results <- teams %>%
+  mutate(
+    avg_wins       = round(avg_wins_sum[abbr] / N_SIM, 2),
+    playoff_pct    = round(playoff_apps[abbr]  / N_SIM * 100, 1),
+    conf_champ_pct = round(conf_champ[abbr]    / N_SIM * 100, 1),
+    sb_win_pct     = round(sb_wins[abbr]       / N_SIM * 100, 1)
+  ) %>%
+  arrange(desc(sb_win_pct))
+```
+
+## Fragestellung
+
+::: {.hbox}
+**Welches NFL-Team gewinnt den Super Bowl LXI (2027), und wie gross ist die Playoff-Qualifikationswahrscheinlichkeit jedes der 32 Teams?**
+:::
+
+**Ansatz:** Stochastische Simulation der gesamten NFL-Saison 2026/27 — `r format(N_SIM, big.mark="'")` Mal wiederholt.
+
+- 32 Teams · 17 Spiele pro Team · 272 Spiele Regular Season
+- Anschliessend vollständiger Playoff-Bracket bis zum Super Bowl
+- Jede Iteration ist ein unabhängiges Zufallsexperiment
+- Ergebnis: Wahrscheinlichkeitsverteilung über alle 32 Teams
+
+---
+
+## Stochastischer Prozess {.smaller}
+
+**1. Teamstärke:** Vegas Win Totals → Elo-Rating → Poisson-Parameter λ (erwartete Punkte/Spiel)
+
+**2. Pro Spiel — drei Zufallskomponenten:**
+
+- **Tagesform** ~ N(0, σ) — multiplikativer Faktor auf λ; bildet Schwankungen ab (Verletzungen, Wetter)
+- **Punkte** ~ Poisson(λ) — für Heim- und Auswärtsteam unabhängig gezogen
+- **Defense-Faktor** — kleiner Korrekturfaktor aus Saison 2025 (±2–3% auf gegnerisches λ)
+
+**3. Heimvorteil:** Fixe +2 Punkte auf λ des Heimteams
+
+**4. Playoff-Bracket:** 7 Teams pro Conference qualifizieren sich (4 Division-Sieger + 3 Wildcards); K.O.-Runde mit gleicher Spiellogik
+
+**5. Repetition:** `r format(N_SIM, big.mark="'")` Wiederholungen → stabile Wahrscheinlichkeiten
+
+---
+
+## Verteilungen {.smaller}
+
+<div class="two-col">
+<div>
+
+### Poisson-Verteilung
+
+Modelliert die **Punktzahl** eines Teams pro Spiel.
+
+$$X \sim \text{Poisson}(\lambda)$$
+
+- λ = erwartete Punkte (Stärke × Form × Defense)
+- Diskret, ganzzahlig, nicht-negativ
+- Liga-Schnitt: λ ≈ 23 Punkte/Spiel
+
+```{r plot-poisson, fig.height=3.0}
+lambda_vals <- c(18, 23, 27)
+x_p <- 0:50
+pois_df <- map_dfr(lambda_vals, ~tibble(
+  x = x_p, y = dpois(x_p, .x),
+  label = paste0("λ = ", .x)
+))
+ggplot(pois_df, aes(x, y, color = label)) +
+  geom_line(linewidth = 1) +
+  scale_color_manual(values = c("#D50A0A","#013369","#27AE60"), name = NULL) +
+  labs(x = "Punkte", y = "P(X = x)") +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "bottom")
+```
+
+</div>
+<div>
+
+### Normalverteilung
+
+Modelliert die **Tagesform** jedes Teams.
+
+$$F = 1 + \varepsilon, \quad \varepsilon \sim N(0,\; \sigma_F), \quad \sigma_F = \frac{\text{FORM\_SD}}{\text{BASE\_POINTS}}$$
+
+- Erwartungswert: E[F] = 1 (kein Effekt im Schnitt)
+- ε ~ N(0, 0.37) kann negativ sein → F < 1 möglich
+- σ_F = 8.5 / 23 ≈ 0.37
+
+```{r plot-normal, fig.height=3.0}
+x_n <- seq(-1.2, 1.2, length.out = 300)
+norm_df <- tibble(x = x_n, y = dnorm(x_n, 0, FORM_SD / BASE_POINTS))
+ggplot(norm_df, aes(x, y)) +
+  geom_line(color = "#013369", linewidth = 1.2) +
+  geom_area(fill = "#013369", alpha = 0.15) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "#D50A0A") +
+  labs(x = "Tagesform-Faktor F", y = "Dichte") +
+  theme_minimal(base_size = 10)
+```
+
+</div>
+</div>
+
+---
+
+## Parameter {.smaller}
+
+| Parameter | Wert | Kalibrierung |
+|---|---|---|
+| **BASE\_POINTS** | 23.0 | Ligadurchschnitt Punkte/Spiel — StatMuse 2025: 22.9 |
+| **HOME\_BONUS** | 2.0 | ~56% Heimsiege historisch ≈ +2–3 Pkt Vorteil |
+| **FORM\_SD** | 8.5 | Gesamt-SD ≈ 9.8 Pkt/Spiel (historisch: 8.5–9.5) |
+| **DEF\_WEIGHT** | 0.1 | Dämpfungsfaktor; ±2–3% Einfluss auf λ |
+| **N\_SIM** | 10'000 | Schätzfehler < 0.3% |
+
+**Teamstärke:** Win Total → Elo → λ
+
+$$\text{Elo}_i = 1500 - 400 \cdot \log_{10}\!\left(\tfrac{1}{p_i} - 1\right), \quad p_i = \tfrac{\text{Win Total}_i}{17}, \quad \lambda_{\text{base},i} = 23 \times \tfrac{\text{Elo}_i}{1500}$$
+
+---
+
+## Lambda-Berechnung {.smaller}
+
+::: {.fbox}
+λ_Heim = (λ_base(Heim) × def_rating(Auswärts) + HOME\_BONUS) × F_Heim
+:::
+::: {.fbox}
+λ_Auswärts = λ_base(Auswärts) × def_rating(Heim) × F_Auswärts
+:::
+
+| Komponente | Bedeutung | Einfluss |
+|---|---|---|
+| **λ_base** | Grundstärke aus Elo — starke Teams haben höheres λ | Primär |
+| **def_rating** | Zugelassene Pkt 2025 / Liga-Schnitt, mit 0.1 gedämpft. >1 = schwache Defense | ±2–3% |
+| **F** | Tagesform-Multiplikator: F = 1 + N(0, 0.37); im Schnitt 1, kann aber über oder unter 1 liegen | Stochastisch |
+| **HOME_BONUS** | +2 Punkte fix für das Heimteam | Fix |
+
+Punkte: Heim ~ Poisson(λ_Heim), Auswärts ~ Poisson(λ_Auswärts) — unabhängig voneinander
+
+---
+
+## Ergebnisse: Super Bowl LXI
+
+```{r plot-sb, fig.width=9, fig.height=5.4}
+results %>%
+  mutate(team = fct_reorder(team, sb_win_pct)) %>%
+  ggplot(aes(x = team, y = sb_win_pct, fill = conference)) +
+  geom_col() +
+  geom_text(aes(label = paste0(sb_win_pct, "%")),
+            hjust = -0.1, size = 2.7) +
+  coord_flip() +
+  scale_fill_manual(values = c("AFC" = "#D50A0A", "NFC" = "#013369"),
+                    name = "Conference") +
+  scale_y_continuous(limits = c(0, max(results$sb_win_pct) * 1.22),
+                     labels = label_percent(scale = 1)) +
+  labs(title = "Super Bowl LXI Gewinnwahrscheinlichkeit",
+       subtitle = paste0(format(N_SIM, big.mark="'"), " stochastische Simulationen"),
+       x = NULL, y = "Wahrscheinlichkeit (%)") +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "bottom", panel.grid.major.y = element_blank())
+```
+
+---
+
+## Ergebnisse: Playoff-Qualifikation
+
+```{r plot-po, fig.width=9, fig.height=5.4}
+results %>%
+  mutate(team = fct_reorder(team, playoff_pct)) %>%
+  ggplot(aes(x = team, y = playoff_pct, fill = conference)) +
+  geom_col() +
+  geom_hline(yintercept = 43.75, linetype = "dashed", color = "grey40", linewidth = 0.8) +
+  annotate("text", x = 3.5, y = 46.5, label = "Ligaschnitt: 43.8%\n(14/32 Plätze)",
+           color = "grey40", size = 2.8, hjust = 0) +
+  geom_text(aes(label = paste0(playoff_pct, "%")),
+            hjust = -0.1, size = 2.7) +
+  coord_flip() +
+  scale_fill_manual(values = c("AFC" = "#D50A0A", "NFC" = "#013369"), name = "Conference") +
+  scale_y_continuous(limits = c(0, 112), labels = label_percent(scale = 1)) +
+  labs(title = "Playoff-Qualifikationswahrscheinlichkeit 2026/27",
+       subtitle = "Nur 14 von 32 Teams qualifizieren sich — Ligaschnitt liegt bei 43.8%",
+       x = NULL, y = "Wahrscheinlichkeit (%)") +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "bottom", panel.grid.major.y = element_blank())
+```
+
+---
+
+## Ergebnisse: Vegas vs. Simulation
+
+```{r plot-wins, fig.width=9, fig.height=5.2}
+results %>%
+  select(team, abbr, win_total, avg_wins, conference) %>%
+  pivot_longer(cols = c(win_total, avg_wins), names_to = "type", values_to = "wins") %>%
+  mutate(type = recode(type,
+    "win_total" = "Vegas Win Total",
+    "avg_wins"  = "Simulierter Durchschnitt")) %>%
+  ggplot(aes(x = fct_reorder(abbr, wins), y = wins, color = type)) +
+  geom_line(aes(group = abbr), color = "grey80") +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = c("Vegas Win Total" = "#E67E22",
+                                "Simulierter Durchschnitt" = "#2980B9"), name = NULL) +
+  labs(title = "Vegas Prognose vs. Simulationsresultat",
+       subtitle = "Gute Übereinstimmung bestätigt Modellvalidität",
+       x = "Team", y = "Erwartete Siege (von 17)") +
+  theme_minimal(base_size = 10) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "top")
+```
+
+---
+
+## Fazit {.smaller}
+
+```{r fazit-vals}
+#| include: false
+top1     <- results$team[1]
+top1_pct <- results$sb_win_pct[1]
+top2     <- results$team[2]
+top2_pct <- results$sb_win_pct[2]
+sure_so  <- results %>% filter(playoff_pct >= 90) %>% nrow()
+```
+
+::: {.hbox}
+**Favorit:** `r top1` — **`r top1_pct`%** Super Bowl Wahrscheinlichkeit   |   **Verfolger:** `r top2` — `r top2_pct`%
+:::
+
+**Erkenntnisse:**
+
+- NFL-Parität ist real: selbst der Favorit gewinnt nur in ~`r top1_pct`% der Fälle
+- `r sure_so` Teams mit >90% Playoff-Chance — Topfavoriten dominieren konsistent
+- Playoff-Odds unter 50% bei Mittelfeld sind korrekt: nur **14 von 32 Plätzen** verfügbar
+- Simulierte Siege ≈ Vegas Win Totals → **Modell valide**
+
+**Limitierungen:** Keine Verletzungssimulation · Defense-Daten aus 2025 (rückwärtsgerichtet) · Playoff-Reseeding vereinfacht
+
+*Fragen?*
