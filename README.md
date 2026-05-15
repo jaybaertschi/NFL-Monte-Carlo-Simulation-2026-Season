@@ -16,7 +16,7 @@ After 10,000 iterations, the results converge to stable probability estimates fo
 nfl-monte-carlo/
 ├── code/
 │   ├── nfl_simulation.qmd       # Full simulation report (Quarto HTML)
-│   └── nfl_praesentation.qmd   # Presentation slides (Quarto revealjs)
+│   └── nfl_praesentation.qmd    # Presentation slides (Quarto revealjs)
 └── output/
     ├── plot-superbowl-1.png     # Super Bowl win probabilities (all 32 teams)
     ├── plot-playoff-1.png       # Playoff qualification probabilities
